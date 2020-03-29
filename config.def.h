@@ -1,11 +1,24 @@
 /* modifier 0 means no modifier */
 static int surfuseragent    = 1;  /* Append Surf version to default WebKit user agent */
+static int URITitle         = 1; /* URI Title */
 static char *fulluseragent  = ""; /* Or override the whole user agent string */
 static char *scriptfile     = "~/.surf/script.js";
 static char *styledir       = "~/.surf/styles/";
 static char *certdir        = "~/.surf/certificates/";
 static char *cachedir       = "~/.surf/cache/";
 static char *cookiefile     = "~/.surf/cookies.txt";
+static char *searchengine   = "https://duckduckgo.com/?q="; /* Space Search */
+
+#define HOMEPAGE "https://duckduckgo.com/" /* Homepage */
+#define BM_FILE "~/.surf/bookmarks.txt" /* Better Bookmarks */
+#define HS_FILE "~/.surf/history.txt" /* Better History */
+static char *historyfile    = HS_FILE; /* Better History */
+
+/* Search Engines */
+static SearchEngine searchengines[] = {
+	{ "g",   "https://www.google.com/search?q=%s" },
+	{ "ddg",   "https://duckduckgo.com/?q=%s"       },
+};
 
 /* Webkit default features */
 /* Highest priority value will be used.
@@ -65,13 +78,16 @@ static WebKitFindOptions findopts = WEBKIT_FIND_OPTIONS_CASE_INSENSITIVE |
 
 #define PROMPT_GO   "Go:"
 #define PROMPT_FIND "Find:"
+#define PROMPT_HS "History:" /* Better History */
+#define PROMPT_BM "Bookmark:" /* Better Bookmarks */
 
 /* SETPROP(readprop, setprop, prompt)*/
+/* Better Bookmarks */
 #define SETPROP(r, s, p) { \
         .v = (const char *[]){ "/bin/sh", "-c", \
              "prop=\"$(printf '%b' \"$(xprop -id $1 $2 " \
              "| sed \"s/^$2(STRING) = //;s/^\\\"\\(.*\\)\\\"$/\\1/\")\" " \
-             "| dmenu -p \"$4\" -w $1)\" && xprop -id $1 -f $3 8s -set $3 \"$prop\"", \
+             "| dmenu -l 10 -p \"$4\" -w $1)\" && xprop -id $1 -f $3 8s -set $3 \"$prop\"", \
              "surf-setprop", winid, r, s, p, NULL \
         } \
 }
@@ -99,6 +115,38 @@ static WebKitFindOptions findopts = WEBKIT_FIND_OPTIONS_CASE_INSENSITIVE |
 #define VIDEOPLAY(u) {\
         .v = (const char *[]){ "/bin/sh", "-c", \
              "mpv --really-quiet \"$0\"", u, NULL \
+        } \
+}
+
+/* HS_URI(setprop, prompt) */
+/* Better History */
+#define HS_URI(s, p) {\
+        .v = (const char *[]){ "/bin/sh", "-c", \
+            "prop=\"`cat " HS_FILE " | dmenu -l 10 -i -p $2 | sed -e 's/\".*\"//;s/  / /g' | cut -d ' ' -f3`\" &&" \
+            "xprop -id $0 -f $1 8s -set $1 \"$prop\"", \
+            winid, s, p, NULL \
+        } \
+}
+
+/* BM_ADD(readprop) */
+/* Better Bookmarks */
+#define BM_ADD(r) {\
+        .v = (const char *[]){ "/bin/sh", "-c", \
+             "(echo $(xprop -id $0 $1) | cut -d '\"' -f2 " \
+             "&& cat " BM_FILE  ") " \
+             "| awk '!seen[$0]++' > " BM_FILE ".tmp && " \
+             "mv " BM_FILE ".tmp " BM_FILE, \
+             winid, r, NULL \
+        } \
+}
+
+/* BM_SET(setprop, prompt) */
+/* Better Bookmarks */
+#define BM_SET(s, p) {\
+        .v = (const char *[]){ "/bin/sh", "-c", \
+            "prop=\"`cat " BM_FILE " | dmenu -l 10 -b -i -p \"$2\"`\" &&" \
+            "xprop -id $1 -f $0 8s -set $0 \"$prop\"", \
+            s, winid, p, NULL \
         } \
 }
 
@@ -133,6 +181,9 @@ static Key keys[] = {
 	{ MODKEY,                GDK_KEY_g,      spawn,      SETPROP("_SURF_URI", "_SURF_GO", PROMPT_GO) },
 	{ MODKEY,                GDK_KEY_f,      spawn,      SETPROP("_SURF_FIND", "_SURF_FIND", PROMPT_FIND) },
 	{ MODKEY,                GDK_KEY_slash,  spawn,      SETPROP("_SURF_FIND", "_SURF_FIND", PROMPT_FIND) },
+	{ MODKEY,                GDK_KEY_m,      bmadd,      BM_ADD("_SURF_URI") }, /* Better Bookmarks */
+	{ MODKEY,                GDK_KEY_z,      spawn,      BM_SET("_SURF_GO", PROMPT_BM) }, /* Better Bookmarks */
+	{ MODKEY,                GDK_KEY_Return, spawn,      HS_URI("_SURF_GO", PROMPT_HS) }, /* Better History */
 
 	{ 0,                     GDK_KEY_Escape, stop,       { 0 } },
 	{ MODKEY,                GDK_KEY_c,      stop,       { 0 } },

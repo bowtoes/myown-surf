@@ -128,6 +128,12 @@ typedef struct {
 	unsigned int stopevent;
 } Button;
 
+/* Search Engines */
+typedef struct {
+	char *token;
+	char *uri;
+} SearchEngine;
+
 typedef struct {
 	const char *uri;
 	Parameter config[ParameterLast];
@@ -175,6 +181,7 @@ static void spawn(Client *c, const Arg *a);
 static void msgext(Client *c, char type, const Arg *a);
 static void destroyclient(Client *c);
 static void cleanup(void);
+static void updatehistory(const char *u, const char *t); /* Better History */
 
 /* GTK/WebKit */
 static WebKitWebView *newview(Client *c, WebKitWebView *rv);
@@ -214,6 +221,7 @@ static void webprocessterminated(WebKitWebView *v,
                                  Client *c);
 static void closeview(WebKitWebView *v, Client *c);
 static void destroywin(GtkWidget* w, Client *c);
+static gchar *parseuri(const gchar *uri); /* Searcn Engines */
 
 /* Hotkeys */
 static void pasteuri(GtkClipboard *clipboard, const char *text, gpointer d);
@@ -231,6 +239,8 @@ static void togglefullscreen(Client *c, const Arg *a);
 static void togglecookiepolicy(Client *c, const Arg *a);
 static void toggleinspector(Client *c, const Arg *a);
 static void find(Client *c, const Arg *a);
+static void bmadd(Client *c, const Arg *a); /* Better Bookmarks */
+static void externalpipe(Client *c, const Arg *a); /* External Pipe */
 
 /* Buttons */
 static void clicknavigate(Client *c, const Arg *a, WebKitHitTestResult *h);
@@ -301,6 +311,84 @@ static ParamName loadfinished[] = {
 /* configuration, allows nested code to access above variables */
 #include "config.h"
 
+/* External Pipe */
+static void
+externalpipe_execute(char* buffer, Arg *arg) {
+	int to[2];
+	void (*oldsigpipe)(int);
+
+	if (pipe(to) == -1)
+		return;
+
+	switch (fork()) {
+	case -1:
+		close(to[0]);
+		close(to[1]);
+		return;
+	case 0:
+		dup2(to[0], STDIN_FILENO); close(to[0]); close(to[1]);
+		execvp(((char **)arg->v)[0], (char **)arg->v);
+		fprintf(stderr, "st: execvp %s\n", ((char **)arg->v)[0]);
+		perror("failed");
+		exit(0);
+	}
+
+	close(to[0]);
+	oldsigpipe = signal(SIGPIPE, SIG_IGN);
+	write(to[1], buffer, strlen(buffer));
+	close(to[1]);
+	signal(SIGPIPE, oldsigpipe);
+}
+
+/* External Pipe */
+static void
+externalpipe_resource_done(WebKitWebResource *r, GAsyncResult *s, Arg *arg)
+{
+	GError *gerr = NULL;
+	guchar *buffer = webkit_web_resource_get_data_finish(r, s, NULL, &gerr);
+	if (gerr == NULL) {
+		externalpipe_execute((char *) buffer, arg);
+	} else {
+		g_error_free(gerr);
+	}
+	g_free(buffer);
+}
+
+/* External Pipe */
+static void
+externalpipe_js_done(WebKitWebView *wv, GAsyncResult *s, Arg *arg)
+{
+	WebKitJavascriptResult *j = webkit_web_view_run_javascript_finish(
+		wv, s, NULL);
+	if (!j) {
+		return;
+	}
+	JSCValue *v = webkit_javascript_result_get_js_value(j);
+	if (jsc_value_is_string(v)) {
+		char *buffer = jsc_value_to_string(v);
+		externalpipe_execute(buffer, arg);
+		g_free(buffer);
+	}
+	webkit_javascript_result_unref(j);
+}
+
+/* External Pipe */
+void
+externalpipe(Client *c, const Arg *arg)
+{
+	if (curconfig[JavaScript].val.i) {
+		webkit_web_view_run_javascript(
+			c->view, "window.document.body.outerHTML",
+			NULL, externalpipe_js_done, arg);
+	} else {
+		WebKitWebResource *resource = webkit_web_view_get_main_resource(c->view);
+		if (resource != NULL) {
+			webkit_web_resource_get_data(
+				resource, NULL, externalpipe_resource_done, arg);
+		}
+	}
+}
+
 void
 usage(void)
 {
@@ -336,6 +424,7 @@ setup(void)
 	curconfig = defconfig;
 
 	/* dirs and files */
+	historyfile = buildfile(historyfile); /* Better History */
 	cookiefile = buildfile(cookiefile);
 	scriptfile = buildfile(scriptfile);
 	cachedir   = buildpath(cachedir);
@@ -558,8 +647,11 @@ loaduri(Client *c, const Arg *a)
 		if (!stat(apath, &st) && (path = realpath(apath, NULL))) {
 			url = g_strdup_printf("file://%s", path);
 			free(path);
+		/* Space Search */
+		} else if (*uri == ' ') {
+			url = g_strdup_printf("%s%s", searchengine, uri + 1);
 		} else {
-			url = g_strdup_printf("http://%s", uri);
+			url = parseuri(uri); /* Search Engines */
 		}
 		if (apath != uri)
 			free(apath);
@@ -620,8 +712,10 @@ getatom(Client *c, int a)
 void
 updatetitle(Client *c)
 {
-	char *title;
-	const char *name = c->overtitle ? c->overtitle :
+	char* title;
+	/* URI Title */
+	const char *name = URITitle ? geturi(c) :
+	                   c->overtitle ? c->overtitle :
 	                   c->title ? c->title : "";
 
 	if (curconfig[ShowIndicators].val.i) {
@@ -1075,11 +1169,28 @@ cleanup(void)
 
 	close(pipein[0]);
 	close(pipeout[1]);
+	g_free(historyfile); /* Better History */
 	g_free(cookiefile);
 	g_free(scriptfile);
 	g_free(stylefile);
 	g_free(cachedir);
 	XCloseDisplay(dpy);
+}
+
+/* Better History */
+void
+updatehistory(const char *u, const char *t)
+{
+	FILE *f;
+	f = fopen(historyfile, "a+");
+
+	char b[20];
+	time_t now = time (0);
+	strftime (b, 20, "%Y-%m-%d %H:%M:%S", localtime (&now));
+	fputs(b, f);
+
+	fprintf(f, " \"%s\" %s\n", t, u);
+	fclose(f);
 }
 
 WebKitWebView *
@@ -1519,6 +1630,7 @@ loadchanged(WebKitWebView *v, WebKitLoadEvent e, Client *c)
 		break;
 	case WEBKIT_LOAD_FINISHED:
 		seturiparameters(c, uri, loadfinished);
+		updatehistory(uri, c->title); /* Better History */
 		/* Disabled until we write some WebKitWebExtension for
 		 * manipulating the DOM directly.
 		evalscript(c, "document.documentElement.style.overflow = '%s'",
@@ -1765,6 +1877,23 @@ destroywin(GtkWidget* w, Client *c)
 		gtk_main_quit();
 }
 
+/* Search Engines */
+gchar *
+parseuri(const gchar *uri) {
+	guint i;
+
+	for (i = 0; i < LENGTH(searchengines); i++) {
+		if (searchengines[i].token == NULL || searchengines[i].uri == NULL ||
+		    *(uri + strlen(searchengines[i].token)) != ' ')
+			continue;
+		if (g_str_has_prefix(uri, searchengines[i].token))
+			return g_strdup_printf(searchengines[i].uri,
+					       uri + strlen(searchengines[i].token) + 1);
+	}
+
+	return g_strdup_printf("http://%s", uri);
+}
+
 void
 pasteuri(GtkClipboard *clipboard, const char *text, gpointer d)
 {
@@ -1947,6 +2076,16 @@ find(Client *c, const Arg *a)
 	}
 }
 
+/* Better Bookmarks */
+void
+bmadd(Client *c, const Arg *a)
+{
+	// _SURF_URI doesn't seem to update automatically if the webpage itself
+	// changes the URI (e.g. by clicking on a hyperlink).
+	setatom(c, AtomUri, geturi(c));
+	spawn(c, a);
+}
+
 void
 clicknavigate(Client *c, const Arg *a, WebKitHitTestResult *h)
 {
@@ -2111,7 +2250,11 @@ main(int argc, char *argv[])
 	if (argc > 0)
 		arg.v = argv[0];
 	else
+#ifdef HOMEPAGE /* Homepage */
+		arg.v = HOMEPAGE; /* Homepage */
+#else /* Homepage */
 		arg.v = "about:blank";
+#endif /* Homepage */
 
 	setup();
 	c = newclient(NULL);

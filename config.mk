@@ -4,7 +4,7 @@ VERSION = 2.0
 # Customize below to fit your system
 
 # paths
-PREFIX = /usr/local
+PREFIX = /addtl
 MANPREFIX = $(PREFIX)/share/man
 LIBPREFIX = $(PREFIX)/lib
 LIBDIR = $(LIBPREFIX)/surf
@@ -23,7 +23,7 @@ LIBS = $(X11LIB) $(GTKLIB) -lgthread-2.0
 
 # flags
 CPPFLAGS = -DVERSION=\"$(VERSION)\" -DWEBEXTDIR=\"$(LIBDIR)\" \
-           -D_DEFAULT_SOURCE -DGCR_API_SUBJECT_TO_CHANGE
+           -D_DEFAULT_SOURCE -DGCR_API_SUBJECT_TO_CHANGE -Wfatal-errors
 SURFCFLAGS = $(INCS) $(CPPFLAGS) -fPIC
 WEBEXTCFLAGS = -fPIC $(WEBEXTINC)
 
