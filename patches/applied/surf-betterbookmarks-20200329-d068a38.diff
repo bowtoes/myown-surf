@@ -1,1 +1,88 @@
-/addtl/dev/c/patches/surf-betterbookmarks/surf-betterbookmarks-20200329-d068a38.diff
+diff --git a/config.def.h b/config.def.h
+index 34265f6..e686d32 100644
+--- a/config.def.h
++++ b/config.def.h
+@@ -7,6 +7,8 @@ static char *certdir        = "~/.surf/certificates/";
+ static char *cachedir       = "~/.surf/cache/";
+ static char *cookiefile     = "~/.surf/cookies.txt";
+ 
++#define BM_FILE "~/.surf/bookmarks.txt" /* Better Bookmarks */
++
+ /* Webkit default features */
+ /* Highest priority value will be used.
+  * Default parameters are priority 0
+@@ -65,6 +67,7 @@ static WebKitFindOptions findopts = WEBKIT_FIND_OPTIONS_CASE_INSENSITIVE |
+ 
+ #define PROMPT_GO   "Go:"
+ #define PROMPT_FIND "Find:"
++#define PROMPT_BM "Bookmark:" /* Better Bookmarks */
+ 
+ /* SETPROP(readprop, setprop, prompt)*/
+ #define SETPROP(r, s, p) { \
+@@ -102,6 +105,28 @@ static WebKitFindOptions findopts = WEBKIT_FIND_OPTIONS_CASE_INSENSITIVE |
+         } \
+ }
+ 
++/* BM_ADD(readprop) */
++/* Better Bookmarks */
++#define BM_ADD(r) {\
++        .v = (const char *[]){ "/bin/sh", "-c", \
++             "(echo $(xprop -id $0 $1) | cut -d '\"' -f2 " \
++             "&& cat " BM_FILE  ") " \
++             "| awk '!seen[$0]++' > " BM_FILE ".tmp && " \
++             "mv " BM_FILE ".tmp " BM_FILE, \
++             winid, r, NULL \
++        } \
++}
++
++/* BM_SET(setprop, prompt) */
++/* Better Bookmarks */
++#define BM_SET(s, p) {\
++        .v = (const char *[]){ "/bin/sh", "-c", \
++            "prop=\"`cat " BM_FILE " | dmenu -l 10 -b -i -p \"$2\"`\" &&" \
++            "xprop -id $1 -f $0 8s -set $0 \"$prop\"", \
++            s, winid, p, NULL \
++        } \
++}
++
+ /* styles */
+ /*
+  * The iteration will stop at the first match, beginning at the beginning of
+@@ -133,6 +158,8 @@ static Key keys[] = {
+ 	{ MODKEY,                GDK_KEY_g,      spawn,      SETPROP("_SURF_URI", "_SURF_GO", PROMPT_GO) },
+ 	{ MODKEY,                GDK_KEY_f,      spawn,      SETPROP("_SURF_FIND", "_SURF_FIND", PROMPT_FIND) },
+ 	{ MODKEY,                GDK_KEY_slash,  spawn,      SETPROP("_SURF_FIND", "_SURF_FIND", PROMPT_FIND) },
++	{ MODKEY,                GDK_KEY_m,      bmadd,      BM_ADD("_SURF_URI") }, /* Better Bookmarks */
++	{ MODKEY,                GDK_KEY_z,      spawn,      BM_SET("_SURF_GO", PROMPT_BM) }, /* Better Bookmarks */
+ 
+ 	{ 0,                     GDK_KEY_Escape, stop,       { 0 } },
+ 	{ MODKEY,                GDK_KEY_c,      stop,       { 0 } },
+diff --git a/surf.c b/surf.c
+index 2b54e3c..be6d230 100644
+--- a/surf.c
++++ b/surf.c
+@@ -231,6 +231,7 @@ static void togglefullscreen(Client *c, const Arg *a);
+ static void togglecookiepolicy(Client *c, const Arg *a);
+ static void toggleinspector(Client *c, const Arg *a);
+ static void find(Client *c, const Arg *a);
++static void bmadd(Client *c, const Arg *a); /* Better Bookmarks */
+ 
+ /* Buttons */
+ static void clicknavigate(Client *c, const Arg *a, WebKitHitTestResult *h);
+@@ -1947,6 +1948,16 @@ find(Client *c, const Arg *a)
+ 	}
+ }
+ 
++/* Better Bookmarks */
++void
++bmadd(Client *c, const Arg *a)
++{
++	// _SURF_URI doesn't seem to update automatically if the webpage itself
++	// changes the URI (e.g. by clicking on a hyperlink).
++	setatom(c, AtomUri, geturi(c));
++	spawn(c, a);
++}
++
+ void
+ clicknavigate(Client *c, const Arg *a, WebKitHitTestResult *h)
+ {

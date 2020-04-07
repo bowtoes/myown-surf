@@ -1,1 +1,106 @@
-/addtl/dev/c/patches/surf-betterhistory/surf-betterhistory-20200329-d068a38.diff
+diff --git a/config.def.h b/config.def.h
+index 34265f6..c454a55 100644
+--- a/config.def.h
++++ b/config.def.h
+@@ -7,6 +7,9 @@ static char *certdir        = "~/.surf/certificates/";
+ static char *cachedir       = "~/.surf/cache/";
+ static char *cookiefile     = "~/.surf/cookies.txt";
+ 
++#define HS_FILE "~/.surf/history.txt" /* Better History */
++static char *historyfile    = HS_FILE; /* Better History */
++
+ /* Webkit default features */
+ /* Highest priority value will be used.
+  * Default parameters are priority 0
+@@ -65,6 +68,7 @@ static WebKitFindOptions findopts = WEBKIT_FIND_OPTIONS_CASE_INSENSITIVE |
+ 
+ #define PROMPT_GO   "Go:"
+ #define PROMPT_FIND "Find:"
++#define PROMPT_HS "History:" /* Better History */
+ 
+ /* SETPROP(readprop, setprop, prompt)*/
+ #define SETPROP(r, s, p) { \
+@@ -102,6 +106,16 @@ static WebKitFindOptions findopts = WEBKIT_FIND_OPTIONS_CASE_INSENSITIVE |
+         } \
+ }
+ 
++/* HS_URI(setprop, prompt) */
++/* Better History */
++#define HS_URI(s, p) {\
++        .v = (const char *[]){ "/bin/sh", "-c", \
++            "prop=\"`cat " HS_FILE " | dmenu -l 10 -i -p $2 | sed -e 's/\".*\"//;s/  / /g' | cut -d ' ' -f3`\" &&" \
++            "xprop -id $0 -f $1 8s -set $1 \"$prop\"", \
++            winid, s, p, NULL \
++        } \
++}
++
+ /* styles */
+ /*
+  * The iteration will stop at the first match, beginning at the beginning of
+@@ -133,6 +147,7 @@ static Key keys[] = {
+ 	{ MODKEY,                GDK_KEY_g,      spawn,      SETPROP("_SURF_URI", "_SURF_GO", PROMPT_GO) },
+ 	{ MODKEY,                GDK_KEY_f,      spawn,      SETPROP("_SURF_FIND", "_SURF_FIND", PROMPT_FIND) },
+ 	{ MODKEY,                GDK_KEY_slash,  spawn,      SETPROP("_SURF_FIND", "_SURF_FIND", PROMPT_FIND) },
++	{ MODKEY,                GDK_KEY_Return, spawn,      HS_URI("_SURF_GO", PROMPT_HS) }, /* Better History */
+ 
+ 	{ 0,                     GDK_KEY_Escape, stop,       { 0 } },
+ 	{ MODKEY,                GDK_KEY_c,      stop,       { 0 } },
+diff --git a/surf.c b/surf.c
+index 2b54e3c..0a9d8e9 100644
+--- a/surf.c
++++ b/surf.c
+@@ -175,6 +175,7 @@ static void spawn(Client *c, const Arg *a);
+ static void msgext(Client *c, char type, const Arg *a);
+ static void destroyclient(Client *c);
+ static void cleanup(void);
++static void updatehistory(const char *u, const char *t); /* Better History */
+ 
+ /* GTK/WebKit */
+ static WebKitWebView *newview(Client *c, WebKitWebView *rv);
+@@ -336,6 +337,7 @@ setup(void)
+ 	curconfig = defconfig;
+ 
+ 	/* dirs and files */
++	historyfile = buildfile(historyfile); /* Better History */
+ 	cookiefile = buildfile(cookiefile);
+ 	scriptfile = buildfile(scriptfile);
+ 	cachedir   = buildpath(cachedir);
+@@ -1075,6 +1077,7 @@ cleanup(void)
+ 
+ 	close(pipein[0]);
+ 	close(pipeout[1]);
++	g_free(historyfile); /* Better History */
+ 	g_free(cookiefile);
+ 	g_free(scriptfile);
+ 	g_free(stylefile);
+@@ -1082,6 +1085,22 @@ cleanup(void)
+ 	XCloseDisplay(dpy);
+ }
+ 
++/* Better History */
++void
++updatehistory(const char *u, const char *t)
++{
++	FILE *f;
++	f = fopen(historyfile, "a+");
++
++	char b[20];
++	time_t now = time (0);
++	strftime (b, 20, "%Y-%m-%d %H:%M:%S", localtime (&now));
++	fputs(b, f);
++
++	fprintf(f, " \"%s\" %s\n", t, u);
++	fclose(f);
++}
++
+ WebKitWebView *
+ newview(Client *c, WebKitWebView *rv)
+ {
+@@ -1519,6 +1538,7 @@ loadchanged(WebKitWebView *v, WebKitLoadEvent e, Client *c)
+ 		break;
+ 	case WEBKIT_LOAD_FINISHED:
+ 		seturiparameters(c, uri, loadfinished);
++		updatehistory(uri, c->title); /* Better History */
+ 		/* Disabled until we write some WebKitWebExtension for
+ 		 * manipulating the DOM directly.
+ 		evalscript(c, "document.documentElement.style.overflow = '%s'",

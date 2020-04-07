@@ -1,1 +1,26 @@
-/addtl/dev/c/patches/surf-urititle/surf-urititle-20200329-d068a38.diff
+diff --git a/config.def.h b/config.def.h
+index 34265f6..88b9be3 100644
+--- a/config.def.h
++++ b/config.def.h
+@@ -1,5 +1,6 @@
+ /* modifier 0 means no modifier */
+ static int surfuseragent    = 1;  /* Append Surf version to default WebKit user agent */
++static int URITitle         = 1; /* URI Title */
+ static char *fulluseragent  = ""; /* Or override the whole user agent string */
+ static char *scriptfile     = "~/.surf/script.js";
+ static char *styledir       = "~/.surf/styles/";
+diff --git a/surf.c b/surf.c
+index 2b54e3c..22b7674 100644
+--- a/surf.c
++++ b/surf.c
+@@ -621,7 +621,9 @@ void
+ updatetitle(Client *c)
+ {
+ 	char *title;
+-	const char *name = c->overtitle ? c->overtitle :
++	/* URI Title */
++	const char *name = URITitle ? geturi(c) :
++	                   c->overtitle ? c->overtitle :
+ 	                   c->title ? c->title : "";
+ 
+ 	if (curconfig[ShowIndicators].val.i) {
