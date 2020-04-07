@@ -1,0 +1,136 @@
+diff --git a/myown-surf/config.def.h b/myown-surf/config.h
+index d0365ee..38c94bc 100644
+--- a/myown-surf/config.def.h
++++ b/myown-surf/config.h
+@@ -169,8 +169,18 @@ static SiteSpecific certs[] = {
+ 	{ "://suckless\\.org/", "suckless.org.crt" },
+ };
+ 
++#define MOD1 GDK_MOD1_MASK
++#define MOD2 GDK_MOD2_MASK
++#define MOD3 GDK_MOD3_MASK
++#define MOD4 GDK_MOD4_MASK
++#define MOD5 GDK_MOD5_MASK
+ #define MODKEY GDK_CONTROL_MASK
+ 
++#define MOD MODKEY
++#define SHFT GDK_SHIFT_MASK
++#define CASP GDK_LOCK_MASK
++#define CTRL GDK_CONTROL_MASK
++
+ /* hotkeys */
+ /*
+  * If you use anything else but MODKEY and GDK_SHIFT_MASK, don't forget to
+@@ -178,59 +188,59 @@ static SiteSpecific certs[] = {
+  */
+ static Key keys[] = {
+ 	/* modifier              keyval          function    arg */
+-	{ MODKEY,                GDK_KEY_g,      spawn,      SETPROP("_SURF_URI", "_SURF_GO", PROMPT_GO) },
+-	{ MODKEY,                GDK_KEY_f,      spawn,      SETPROP("_SURF_FIND", "_SURF_FIND", PROMPT_FIND) },
+-	{ MODKEY,                GDK_KEY_slash,  spawn,      SETPROP("_SURF_FIND", "_SURF_FIND", PROMPT_FIND) },
+-	{ MODKEY,                GDK_KEY_m,      bmadd,      BM_ADD("_SURF_URI") }, /* Better Bookmarks */
+-	{ MODKEY,                GDK_KEY_z,      spawn,      BM_SET("_SURF_GO", PROMPT_BM) }, /* Better Bookmarks */
+-	{ MODKEY,                GDK_KEY_Return, spawn,      HS_URI("_SURF_GO", PROMPT_HS) }, /* Better History */
++	{ MOD,                   GDK_KEY_g,      spawn,      SETPROP("_SURF_URI", "_SURF_GO", PROMPT_GO) },
++	{ MOD,                   GDK_KEY_f,      spawn,      SETPROP("_SURF_FIND", "_SURF_FIND", PROMPT_FIND) },
++	{ MOD,                   GDK_KEY_slash,  spawn,      SETPROP("_SURF_FIND", "_SURF_FIND", PROMPT_FIND) },
++	{ MOD,                   GDK_KEY_m,      bmadd,      BM_ADD("_SURF_URI") }, /* Better Bookmarks */
++	{ MOD,                   GDK_KEY_z,      spawn,      BM_SET("_SURF_GO", PROMPT_BM) }, /* Better Bookmarks */
++	{ MOD,                   GDK_KEY_Return, spawn,      HS_URI("_SURF_GO", PROMPT_HS) }, /* Better History */
+ 
+ 	{ 0,                     GDK_KEY_Escape, stop,       { 0 } },
+-	{ MODKEY,                GDK_KEY_c,      stop,       { 0 } },
++	{ MOD,                   GDK_KEY_c,      stop,       { 0 } },
+ 
+-	{ MODKEY|GDK_SHIFT_MASK, GDK_KEY_r,      reload,     { .i = 1 } },
+-	{ MODKEY,                GDK_KEY_r,      reload,     { .i = 0 } },
++	{ MOD|SHFT,              GDK_KEY_r,      reload,     { .i = 1 } },
++	{ MOD,                   GDK_KEY_r,      reload,     { .i = 0 } },
+ 
+-	{ MODKEY,                GDK_KEY_l,      navigate,   { .i = +1 } },
+-	{ MODKEY,                GDK_KEY_h,      navigate,   { .i = -1 } },
++	{ MOD,                   GDK_KEY_l,      navigate,   { .i = +1 } },
++	{ MOD,                   GDK_KEY_h,      navigate,   { .i = -1 } },
+ 
+ 	/* vertical and horizontal scrolling, in viewport percentage */
+-	{ MODKEY,                GDK_KEY_j,      scrollv,    { .i = +10 } },
+-	{ MODKEY,                GDK_KEY_k,      scrollv,    { .i = -10 } },
+-	{ MODKEY,                GDK_KEY_space,  scrollv,    { .i = +50 } },
+-	{ MODKEY,                GDK_KEY_b,      scrollv,    { .i = -50 } },
+-	{ MODKEY,                GDK_KEY_i,      scrollh,    { .i = +10 } },
+-	{ MODKEY,                GDK_KEY_u,      scrollh,    { .i = -10 } },
++	{ MOD,                   GDK_KEY_j,      scrollv,    { .i = +10 } },
++	{ MOD,                   GDK_KEY_k,      scrollv,    { .i = -10 } },
++	{ MOD,                   GDK_KEY_space,  scrollv,    { .i = +50 } },
++	{ MOD,                   GDK_KEY_b,      scrollv,    { .i = -50 } },
++	{ MOD,                   GDK_KEY_i,      scrollh,    { .i = +10 } },
++	{ MOD,                   GDK_KEY_u,      scrollh,    { .i = -10 } },
+ 
+ 
+-	{ MODKEY|GDK_SHIFT_MASK, GDK_KEY_j,      zoom,       { .i = -1 } },
+-	{ MODKEY|GDK_SHIFT_MASK, GDK_KEY_k,      zoom,       { .i = +1 } },
+-	{ MODKEY|GDK_SHIFT_MASK, GDK_KEY_q,      zoom,       { .i = 0  } },
+-	{ MODKEY,                GDK_KEY_minus,  zoom,       { .i = -1 } },
+-	{ MODKEY,                GDK_KEY_plus,   zoom,       { .i = +1 } },
++	{ MOD|SHFT,              GDK_KEY_j,      zoom,       { .i = -1 } },
++	{ MOD|SHFT,              GDK_KEY_k,      zoom,       { .i = +1 } },
++	{ MOD|SHFT,              GDK_KEY_q,      zoom,       { .i = 0  } },
++	{ MOD,                   GDK_KEY_minus,  zoom,       { .i = -1 } },
++	{ MOD,                   GDK_KEY_plus,   zoom,       { .i = +1 } },
+ 
+-	{ MODKEY,                GDK_KEY_p,      clipboard,  { .i = 1 } },
+-	{ MODKEY,                GDK_KEY_y,      clipboard,  { .i = 0 } },
++	{ MOD,                   GDK_KEY_p,      clipboard,  { .i = 1 } },
++	{ MOD,                   GDK_KEY_y,      clipboard,  { .i = 0 } },
+ 
+-	{ MODKEY,                GDK_KEY_n,      find,       { .i = +1 } },
+-	{ MODKEY|GDK_SHIFT_MASK, GDK_KEY_n,      find,       { .i = -1 } },
++	{ MOD,                   GDK_KEY_n,      find,       { .i = +1 } },
++	{ MOD|SHFT,              GDK_KEY_n,      find,       { .i = -1 } },
+ 
+-	{ MODKEY|GDK_SHIFT_MASK, GDK_KEY_p,      print,      { 0 } },
+-	{ MODKEY,                GDK_KEY_t,      showcert,   { 0 } },
++	{ MOD|SHFT,              GDK_KEY_p,      print,      { 0 } },
++	{ MOD,                   GDK_KEY_t,      showcert,   { 0 } },
+ 
+-	{ MODKEY|GDK_SHIFT_MASK, GDK_KEY_a,      togglecookiepolicy, { 0 } },
++	{ MOD|SHFT,              GDK_KEY_a,      togglecookiepolicy, { 0 } },
+ 	{ 0,                     GDK_KEY_F11,    togglefullscreen, { 0 } },
+-	{ MODKEY|GDK_SHIFT_MASK, GDK_KEY_o,      toggleinspector, { 0 } },
+-
+-	{ MODKEY|GDK_SHIFT_MASK, GDK_KEY_c,      toggle,     { .i = CaretBrowsing } },
+-	{ MODKEY|GDK_SHIFT_MASK, GDK_KEY_f,      toggle,     { .i = FrameFlattening } },
+-	{ MODKEY|GDK_SHIFT_MASK, GDK_KEY_g,      toggle,     { .i = Geolocation } },
+-	{ MODKEY|GDK_SHIFT_MASK, GDK_KEY_s,      toggle,     { .i = JavaScript } },
+-	{ MODKEY|GDK_SHIFT_MASK, GDK_KEY_i,      toggle,     { .i = LoadImages } },
+-	{ MODKEY|GDK_SHIFT_MASK, GDK_KEY_v,      toggle,     { .i = Plugins } },
+-	{ MODKEY|GDK_SHIFT_MASK, GDK_KEY_b,      toggle,     { .i = ScrollBars } },
+-	{ MODKEY|GDK_SHIFT_MASK, GDK_KEY_t,      toggle,     { .i = StrictTLS } },
+-	{ MODKEY|GDK_SHIFT_MASK, GDK_KEY_m,      toggle,     { .i = Style } },
++	{ MOD|SHFT,              GDK_KEY_o,      toggleinspector, { 0 } },
++
++	{ MOD|SHFT,              GDK_KEY_c,      toggle,     { .i = CaretBrowsing } },
++	{ MOD|SHFT,              GDK_KEY_f,      toggle,     { .i = FrameFlattening } },
++	{ MOD|SHFT,              GDK_KEY_g,      toggle,     { .i = Geolocation } },
++	{ MOD|SHFT,              GDK_KEY_s,      toggle,     { .i = JavaScript } },
++	{ MOD|SHFT,              GDK_KEY_i,      toggle,     { .i = LoadImages } },
++	{ MOD|SHFT,              GDK_KEY_v,      toggle,     { .i = Plugins } },
++	{ MOD|SHFT,              GDK_KEY_b,      toggle,     { .i = ScrollBars } },
++	{ MOD|SHFT,              GDK_KEY_t,      toggle,     { .i = StrictTLS } },
++	{ MOD|SHFT,              GDK_KEY_m,      toggle,     { .i = Style } },
+ };
+ 
+ /* button definitions */
+@@ -238,9 +248,9 @@ static Key keys[] = {
+ static Button buttons[] = {
+ 	/* target       event mask      button  function        argument        stop event */
+ 	{ OnLink,       0,              2,      clicknewwindow, { .i = 0 },     1 },
+-	{ OnLink,       MODKEY,         2,      clicknewwindow, { .i = 1 },     1 },
+-	{ OnLink,       MODKEY,         1,      clicknewwindow, { .i = 1 },     1 },
++	{ OnLink,       MOD,            2,      clicknewwindow, { .i = 1 },     1 },
++	{ OnLink,       MOD,            1,      clicknewwindow, { .i = 1 },     1 },
+ 	{ OnAny,        0,              8,      clicknavigate,  { .i = -1 },    1 },
+ 	{ OnAny,        0,              9,      clicknavigate,  { .i = +1 },    1 },
+-	{ OnMedia,      MODKEY,         1,      clickexternplayer, { 0 },       1 },
++	{ OnMedia,      MOD,            1,      clickexternplayer, { 0 },       1 },
+ };

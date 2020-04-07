@@ -17,7 +17,7 @@ static char *historyfile    = HS_FILE; /* Better History */
 /* Search Engines */
 static SearchEngine searchengines[] = {
 	{ "g",   "https://www.google.com/search?q=%s" },
-	{ "ddg",   "https://duckduckgo.com/?q=%s"       },
+	{ "ddg", "https://duckduckgo.com/?q=%s"       },
 };
 
 /* Webkit default features */
